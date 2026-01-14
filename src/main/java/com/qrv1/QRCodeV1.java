@@ -7,6 +7,9 @@ package com.qrv1;
 public class QRCodeV1 {
     
     public static final int SIZE = 21; // Version 1 QR code is 21x21 modules
+    private static final int DARK_MODULE_ROW = 13; // (4 * version + 9) = (4 * 1 + 9) = 13
+    private static final int DARK_MODULE_COL = 8;
+    private static final int FORMAT_INFO_MASK = 0b101010000010010; // Fixed pattern for format information
     
     private boolean[][] matrix;
     private String data;
@@ -154,7 +157,9 @@ public class QRCodeV1 {
     }
     
     private void addDarkModule() {
-        matrix[4 * 1 + 9][8] = true;
+        // Dark module is always placed at (4 * version + 9, 8) for all QR versions
+        // For version 1: (4 * 1 + 9, 8) = (13, 8)
+        matrix[DARK_MODULE_ROW][DARK_MODULE_COL] = true;
     }
     
     private EncodingMode detectEncodingMode(String data) {
@@ -519,7 +524,8 @@ public class QRCodeV1 {
         int formatBits = (level.getBits() << 3) | mask;
         int errorCorrection = calculateFormatErrorCorrection(formatBits);
         int format = (formatBits << 10) | errorCorrection;
-        format ^= 0b101010000010010; // XOR with fixed pattern
+        // XOR with fixed pattern to ensure some dark modules even if all format bits are 0
+        format ^= FORMAT_INFO_MASK;
         
         // Place format information
         for (int i = 0; i < 15; i++) {
