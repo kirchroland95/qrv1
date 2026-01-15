@@ -65,9 +65,9 @@ public class QrV1 {
 		// Choose best mask
 		maskPattern = selectBestMask();
 		// Add Format 
-		qr = FormatStrips(maskPattern);
+		qr = FormatStrips(qr, maskPattern, isAnimationEnabled);
 		// Mask
-		qr = maskData(qr, maskPattern);
+		qr = maskData(qr, maskPattern, isAnimationEnabled);
 
 		// Show QR in terminal
 		printQR();
@@ -108,14 +108,7 @@ public class QrV1 {
 
 	// Come back to this and figure out if you want to pass the reference or create
 	// a new qr, we could modify the passed one as it is fine if it is modified
-	private int[][] FormatStrips(int mask) {
-		int size = qr.length;
-		int[][] newQr = new int[size][size];
-
-		// Copy original QR
-		for (int i = 0; i < size; i++) {
-			System.arraycopy(qr[i], 0, newQr[i], 0, size);
-		}
+	private int[][] FormatStrips(int [][] newQr, int mask, boolean animate) {
 		// Add 2 bits
 		int fiveBitFormat = errorCorrectionLevel; // 000xx
 
@@ -148,7 +141,9 @@ public class QrV1 {
 			if (allocatedPositions[9][i] == 4) {
 				newQr[9][i] = (formatPattern >> shift) & 1;
 				shift -= 1;
-				clearScreenWithDelay(delay);
+				if(animate) {					
+					clearScreenWithDelay(delay);
+				}
 			}
 		}
 		shift = 14;
@@ -156,7 +151,9 @@ public class QrV1 {
 			if (allocatedPositions[i][9] == 5) {
 				newQr[i][9] = (formatPattern >> shift) & 1;
 				shift -= 1;
-				clearScreenWithDelay(delay);
+				if(animate) {
+					clearScreenWithDelay(delay);					
+				}
 			}
 		}
 		return newQr;
@@ -222,13 +219,15 @@ public class QrV1 {
 
 	}
 
-	private int[][] maskData(int[][] newQr, int mask) {
+	private int[][] maskData(int[][] newQr, int mask, boolean animate) {
 
 		for (int i = 1; i <= 21; i++) {
 			for (int j = 1; j <= 21; j++) {
 				if (allocatedPositions[i][j] == 0 && maskBlock(i - 1, j - 1, mask)) {
 					newQr[i][j] ^= 1;
-					clearScreenWithDelay(delay);
+					if (animate) {						
+						clearScreenWithDelay(delay);
+					}
 				}
 			}
 		}
@@ -241,8 +240,12 @@ public class QrV1 {
 
 		for (int mask = 0; mask < 8; mask++) {
 			int penalty = 0;
-			int[][] newQr = FormatStrips(mask);
-			newQr = maskData(newQr, mask);
+			int[][] newQr = new int[qr.length][];
+			for (int i = 0; i < qr.length; i++) {
+			    newQr[i] = qr[i].clone();
+			}
+			newQr = FormatStrips(newQr, mask, false);
+			newQr = maskData(newQr, mask, false);
 			// Calculate penalties
 			penalty += calculateRule1(newQr);
 			penalty += calculateRule2(newQr);
