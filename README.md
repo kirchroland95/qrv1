@@ -60,6 +60,19 @@ qr.buildQr("Hello world!");
 
 The QR code is displayed in the terminal using Unicode characters, creating a scannable code that can be read by standard QR code scanners.
 
+## Useful links
+
+https://www.thonky.com/qr-code-tutorial/
+
+https://www.nayuki.io/page/creating-a-qr-code-step-by-step
+
+http://mathsandcomputing.com/encoding/qrencode/index.php
+
+https://www.qrcode.com/en/about/version.html
+
+https://youtu.be/w5ebcowAJD8?si=yBiIs7-ho_4FWNP2
+
+
 ## License
 
 This project is provided as-is for educational purposes.
