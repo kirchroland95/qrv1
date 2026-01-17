@@ -5,26 +5,25 @@ public class QrV1 {
 	private int textLength;
 	private int size = 23;
 	private int[][] qr = new int[size][size]; // 0 = white, 1 = black
-	private int errorCorrectionLevel = 1; // ECC low
-	private int maskPattern = 1;
-	private int formatPattern = 0;
-	private int encoding = 4;
+	private int errorCorrectionLevel;
+	private int maskPattern;
+	private int formatPattern;
+	private int encoding;
 	private int delay = 110;
 	private boolean isAnimationEnabled = false;
-
+	private static final String ALPHANUMERIC_TABLE = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:";
 	private static final int[] EC_CAPACITY_BYTES = { 10, // M (Medium - errorCorrectionLevel 0)
 			7, // L (Low - errorCorrectionLevel 1)
 			17, // H (High - errorCorrectionLevel 2)
 			13 // Q (Quartile - errorCorrectionLevel 3)
 	};
-	
-	private static final int[] DATA_CAPACITY_BYTES = {
-			16, // M
+
+	private static final int[] DATA_CAPACITY_BYTES = { 16, // M
 			19, // L
-			9,  // H
-			13	// Q
+			9, // H
+			13 // Q
 	};
-	
+
 	private int[][] pattern = { { 1, 1, 1, 1, 1, 1, 1 }, { 1, 0, 0, 0, 0, 0, 1 }, { 1, 0, 1, 1, 1, 0, 1 },
 			{ 1, 0, 1, 1, 1, 0, 1 }, { 1, 0, 1, 1, 1, 0, 1 }, { 1, 0, 0, 0, 0, 0, 1 }, { 1, 1, 1, 1, 1, 1, 1 } };
 
@@ -65,8 +64,7 @@ public class QrV1 {
 		drawCorner();
 		// Draw timing pattern
 		drawTiming();
-		// Choose encoding
-		bestEncoding();
+		// Set text and choose encoding
 		setText(text);
 		// Add encoding, length and message
 		fillData();
@@ -82,8 +80,7 @@ public class QrV1 {
 	}
 
 	public void buildQr(String text) {
-		this.text=text;
-//		setText(text);
+		this.text = text;
 		buildQr();
 	}
 
@@ -102,6 +99,7 @@ public class QrV1 {
 			}
 		}
 		qr[14][9] = 1;
+		clearScreenWithDelay(delay);
 	}
 
 	private void drawTiming() {
@@ -115,14 +113,85 @@ public class QrV1 {
 		}
 	}
 
+	public void setText(String text) {
+		int maxLength = 0;
+		this.text = text;
+		bestEncoding();
+		switch (this.encoding) {
+		case 1:
+			maxLength = 41;
+			break;
+		case 2:
+			maxLength = 25;
+			break;
+		case 4:
+			maxLength = 17;
+			break;
+
+		case 8:
+			maxLength = 10;
+			break;
+		}
+		if (text == null) {
+			this.text = "";
+			this.textLength = 0;
+		} else {
+			// Truncate the string if it's longer than 17 characters
+			if (text.length() > maxLength) {
+				this.text = text.substring(0, maxLength);
+			} else {
+				this.text = text;
+			}
+			this.textLength = this.text.length();
+		}
+		setErrorCorrectionLevel();
+	}
+
+	public void setErrorCorrectionLevel() {
+		int mapped;
+
+		if (textLength >= 0 && textLength <= 7) {
+			mapped = 7;
+		} else if (textLength >= 8 && textLength <= 11) {
+			mapped = 11;
+		} else if (textLength >= 12 && textLength <= 14) {
+			mapped = 14;
+		} else if (textLength >= 15 && textLength <= 17) {
+			mapped = 17;
+		} else {
+			mapped = 17; // out of range
+		}
+		switch (mapped) {
+		case 7:
+			// H
+			errorCorrectionLevel = 2;
+			break;
+		case 11:
+			// Q
+			errorCorrectionLevel = 3;
+			break;
+		case 14:
+			// M
+			errorCorrectionLevel = 0;
+			break;
+		case 17:
+			// L
+			errorCorrectionLevel = 1;
+			break;
+		default:
+			// default to L
+			errorCorrectionLevel = 1;
+			break;
+		}
+	}
+
 	private void bestEncoding() {
-		// 1. Numeric: Only digits 0-9
+		// 1. Numeric
 		if (text.matches("[0-9]+")) {
 			encoding = 1; // Mode Indicator: 0001
 		}
 
-		// 2. Alphanumeric: 0-9, A-Z and specific symbols
-		// Symbols: space, $, %, *, +, -, ., /, :
+		// 2. Alphanumeric
 		else if (text.matches("[0-9A-Z $%*+\\-./:]+")) {
 			encoding = 2; // Mode Indicator: 0010
 		}
@@ -165,59 +234,6 @@ public class QrV1 {
 		}
 	}
 
-	// Come back to this and figure out if you want to pass the reference or create
-	// a new qr, we could modify the passed one as it is fine if it is modified
-	private int[][] FormatStrips(int[][] newQr, int mask, boolean animate) {
-		// Add 2 bits
-		int fiveBitFormat = errorCorrectionLevel; // 000xx
-
-		// Add next 3 bits
-		fiveBitFormat = (fiveBitFormat << 3) | mask; // xxyyy
-
-		// Generator polynomial: x^10 + x^8 + x^5 + x^4 + x^2 + x^1 + 1
-		int genPoly = 0b10100110111;
-
-		// Create a 15-bit format of the 5 bits
-		int format = fiveBitFormat << 10;
-		int shift = 0;
-		// While the format length is greater than 10
-		while (bitLength(format) > 10) {
-			shift = bitLength(format) - 11;
-			format ^= (genPoly << shift);
-		}
-
-		// Get last 10 bits for error correction
-		int ec = format & 0x3FF;
-
-		// 3. Append initial 5 bits with ec
-		int combined = (fiveBitFormat << 10) | ec;
-
-		// 4. Apply mask
-		formatPattern = combined ^ 0b101010000010010;
-
-		shift = 14;
-		for (int i = 1; i <= 21; i++) {
-			if (allocatedPositions[9][i] == 4) {
-				newQr[9][i] = (formatPattern >> shift) & 1;
-				shift -= 1;
-				if (animate) {
-					clearScreenWithDelay(delay);
-				}
-			}
-		}
-		shift = 14;
-		for (int i = 21; i >= 1; i--) {
-			if (allocatedPositions[i][9] == 5) {
-				newQr[i][9] = (formatPattern >> shift) & 1;
-				shift -= 1;
-				if (animate) {
-					clearScreenWithDelay(delay);
-				}
-			}
-		}
-		return newQr;
-	}
-
 	private void fillData() {
 		switch (this.encoding) {
 		case 1: // Numeric Mode (Indicator: 0001)
@@ -225,7 +241,7 @@ public class QrV1 {
 			break;
 
 		case 2: // Alphanumeric Mode (Indicator: 0010)
-
+			fillDataAlphaNumeric();
 			break;
 
 		case 4: // Byte Mode (Indicator: 0100)
@@ -242,39 +258,45 @@ public class QrV1 {
 	}
 
 	private void fillDataNumeric() {
-		// Create combined String of data from mode(4bit) + count(10bit) + data(max137) + terminator(1or4) + padding(until capacity) + EC in
-		// bits format using only 1 and 0
+		// Create combined String of data from mode(4bit) + count(10bit) + data(max137)
+		// + terminator(1or4) + padding(until capacity) + EC
+		// in bits format using only 1 and 0
 		String data = "";
+
 		// 1. Add mode bit by bit
 		data += String.format("%4s", Integer.toBinaryString(encoding)).replace(' ', '0');
+
 		// 2. Add the text length
 		data += String.format("%10s", Integer.toBinaryString(textLength)).replace(' ', '0');
+
 		// 3. Add the data
 		data += NumericToBinary(text);
+
 		// 4. Add Terminator 0 or 0000 bits to signify end of message
-		if(data.length()==151) {
+		if (data.length() == 151) {
 			// Special case for 41 numbers, adding the 4 bit terminator
-			// Will increase the size from 151 to 155 while we only have 152 bits to use
+			// will increase the size from 151 to 155
+			// while we only have 152 bits to use
 			// Add only one 0 as a terminator
-			data += "0";	
-		}else {			
+			data += "0";
+		} else {
 			data += "0000";
 		}
 		while (data.length() % 8 != 0) {
 			data += "0";
 		}
-		
+
 		// 5. Add padding to fill the data to it's capacity
 		int targetBits = DATA_CAPACITY_BYTES[errorCorrectionLevel] * 8;
 		String pad1 = "11101100"; // 236
 		String pad2 = "00010001"; // 17
 		boolean usePad1 = true;
-		
+
 		while (data.length() < targetBits) {
-		    data += (usePad1) ? pad1 : pad2;
-		    usePad1 = !usePad1;
+			data += (usePad1) ? pad1 : pad2;
+			usePad1 = !usePad1;
 		}
-		
+
 		// 6. Calculate EC
 		byte[] dataCodewords = binaryStringToBytes(data);
 		byte[] ecBlocks = ReedSolomonEncoder.calculateEcBlocks(dataCodewords, EC_CAPACITY_BYTES[errorCorrectionLevel]);
@@ -316,6 +338,7 @@ public class QrV1 {
 		}
 	}
 
+	// Converts the input text into a sequence of bits
 	private String NumericToBinary(String text) {
 		StringBuilder sb = new StringBuilder();
 		while (text.length() > 0) {
@@ -338,14 +361,114 @@ public class QrV1 {
 		return sb.toString();
 	}
 
+	private void fillDataAlphaNumeric() {
+		// Create combined String of data from mode(4bit) + count(9bit) + data(138) +
+		// terminator(variable) + padding(until capacity) + EC
+		// in bits format using only 1 and 0
+		String data = "";
+
+		// 1. Add mode bit by bit
+		data += String.format("%4s", Integer.toBinaryString(encoding)).replace(' ', '0');
+
+		// 2. Add the text length
+		data += String.format("%9s", Integer.toBinaryString(textLength)).replace(' ', '0');
+
+		// 3. Add the data
+		data += AlphaNumericToBinary(text);
+
+		// 4. Add Terminator 0 or 0000 bits to signify end of message
+		int targetBits = DATA_CAPACITY_BYTES[errorCorrectionLevel] * 8;
+		int remainingBits = targetBits - data.length();
+		int terminatorBits = Math.min(4, remainingBits);
+		for (int i = 0; i < terminatorBits; i++) {
+			data += "0";
+		}
+
+		// 5. Add padding to fill the data to it's capacity
+		while (data.length() % 8 != 0 && data.length() < targetBits) {
+			data += "0";
+		}
+		String pad1 = "11101100"; // 236
+		String pad2 = "00010001"; // 17
+		boolean usePad1 = true;
+
+		while (data.length() < targetBits) {
+			data += (usePad1) ? pad1 : pad2;
+			usePad1 = !usePad1;
+		}
+
+		// 6. Calculate EC
+		byte[] dataCodewords = binaryStringToBytes(data);
+		byte[] ecBlocks = ReedSolomonEncoder.calculateEcBlocks(dataCodewords, EC_CAPACITY_BYTES[errorCorrectionLevel]);
+
+		// 7. Add the EC
+		data += ReedSolomonEncoder.bytesToBinaryString(ecBlocks);
+
+		// Add data to QR array
+		int counter = 0;
+		int row = size - 2;
+		int col = size - 2;
+		boolean dirup = true;
+
+		while (counter < data.length()) {
+			if (allocatedPositions[row][col] == 1 || allocatedPositions[row][col] == 4
+					|| allocatedPositions[row][col - 1] == 4) {
+				dirup = !dirup;
+				row += dirup ? -1 : 1;
+				col -= 2;
+			}
+			if (allocatedPositions[row][col] == 2) {
+				row += dirup ? -1 : 1;
+			}
+			if (allocatedPositions[row][col] == 3) {
+				col -= 1;
+			}
+			if (allocatedPositions[row][col] == 5) {
+				row = 13;
+				col = 9;
+			}
+			qr[row][col] = (data.charAt(counter) == '1') ? 1 : 0;
+			if (qr[row][col] == 1)
+				clearScreenWithDelay(delay);
+			qr[row][col - 1] = (data.charAt(counter + 1) == '1') ? 1 : 0;
+			if (qr[row][col - 1] == 1)
+				clearScreenWithDelay(delay);
+			row += dirup ? -1 : 1;
+			counter += 2;
+		}
+
+	}
+
+	// Converts the input text into a sequence of bits
+	private String AlphaNumericToBinary(String text) {
+		StringBuilder sb = new StringBuilder();
+		while (text.length() > 0) {
+			if (text.length() >= 2) {
+				int firstLetter = ALPHANUMERIC_TABLE.indexOf(text.charAt(0));
+				int secondLetter = ALPHANUMERIC_TABLE.indexOf(text.charAt(1));
+				int value = firstLetter * 45 + secondLetter;
+				sb.append(String.format("%11s", Integer.toBinaryString(value)).replace(' ', '0')); // 2 char = 11 bits
+				text = text.substring(2); // Cut them off
+			} else {
+				int lastLetter = ALPHANUMERIC_TABLE.indexOf(text.charAt(0));
+				sb.append(String.format("%6s", Integer.toBinaryString(lastLetter)).replace(' ', '0')); // 1 char = 6
+																										// bits
+				text = ""; // empty
+			}
+		}
+
+		return sb.toString();
+	}
+
 	private void fillDataByte() {
-		// Create combined String of data from mode + count + data + terminator + EC in
-		// bits format using only 1 and 0
+		// Create combined String of data from mode(4) + count(8) + data + terminator(4)
+		// + padding(until capacity) + EC
+		// in bits format using only 1 and 0
 		String data = "";
 
 		// 1. Add mode bits
 		data += String.format("%4s", Integer.toBinaryString(encoding)).replace(' ', '0');
-		
+
 		// 2. Add the text length
 		data += String.format("%8s", Integer.toBinaryString(textLength)).replace(' ', '0');
 
@@ -354,16 +477,16 @@ public class QrV1 {
 
 		// 4. Add Terminator 0000 bits to signify end of message
 		data += "0000";
-		
+
 		// 5. Add padding to fill the data to it's capacity
 		int targetBits = DATA_CAPACITY_BYTES[errorCorrectionLevel] * 8;
 		String pad1 = "11101100"; // 236
 		String pad2 = "00010001"; // 17
 		boolean usePad1 = true;
-		
+
 		while (data.length() < targetBits) {
-		    data += (usePad1) ? pad1 : pad2;
-		    usePad1 = !usePad1;
+			data += (usePad1) ? pad1 : pad2;
+			usePad1 = !usePad1;
 		}
 
 		// 6. Calculate EC
@@ -425,21 +548,6 @@ public class QrV1 {
 		return sb.toString();
 	}
 
-	private int[][] maskData(int[][] newQr, int mask, boolean animate) {
-
-		for (int i = 1; i <= 21; i++) {
-			for (int j = 1; j <= 21; j++) {
-				if (allocatedPositions[i][j] == 0 && maskBlock(i - 1, j - 1, mask)) {
-					newQr[i][j] ^= 1;
-					if (animate) {
-						clearScreenWithDelay(delay);
-					}
-				}
-			}
-		}
-		return newQr;
-	}
-
 	private int selectBestMask() {
 		int bestMask = 0;
 		int lowestPenalty = Integer.MAX_VALUE;
@@ -464,6 +572,72 @@ public class QrV1 {
 			}
 		}
 		return bestMask;
+	}
+
+	private int[][] FormatStrips(int[][] newQr, int mask, boolean animate) {
+		// Add 2 bits
+		int fiveBitFormat = errorCorrectionLevel; // 000xx
+
+		// Add next 3 bits
+		fiveBitFormat = (fiveBitFormat << 3) | mask; // xxyyy
+
+		// Generator polynomial: x^10 + x^8 + x^5 + x^4 + x^2 + x^1 + 1
+		int genPoly = 0b10100110111;
+
+		// Create a 15-bit format of the 5 bits
+		int format = fiveBitFormat << 10;
+		int shift = 0;
+		// While the format length is greater than 10
+		while (bitLength(format) > 10) {
+			shift = bitLength(format) - 11;
+			format ^= (genPoly << shift);
+		}
+
+		// Get last 10 bits for error correction
+		int ec = format & 0x3FF;
+
+		// 3. Append initial 5 bits with ec
+		int combined = (fiveBitFormat << 10) | ec;
+
+		// 4. Apply mask
+		formatPattern = combined ^ 0b101010000010010;
+
+		shift = 14;
+		for (int i = 1; i <= 21; i++) {
+			if (allocatedPositions[9][i] == 4) {
+				newQr[9][i] = (formatPattern >> shift) & 1;
+				shift -= 1;
+				if (animate) {
+					clearScreenWithDelay(delay);
+				}
+			}
+		}
+		shift = 14;
+		for (int i = 21; i >= 1; i--) {
+			if (allocatedPositions[i][9] == 5) {
+				newQr[i][9] = (formatPattern >> shift) & 1;
+				shift -= 1;
+				if (animate) {
+					clearScreenWithDelay(delay);
+				}
+			}
+		}
+		return newQr;
+	}
+
+	private int[][] maskData(int[][] newQr, int mask, boolean animate) {
+
+		for (int i = 1; i <= 21; i++) {
+			for (int j = 1; j <= 21; j++) {
+				if (allocatedPositions[i][j] == 0 && maskBlock(i - 1, j - 1, mask)) {
+					newQr[i][j] ^= 1;
+					if (animate) {
+						clearScreenWithDelay(delay);
+					}
+				}
+			}
+		}
+		return newQr;
 	}
 
 	private int calculateRule1(int[][] calcQr) {
@@ -615,76 +789,6 @@ public class QrV1 {
 		case 7 -> ((((r + c) % 2) + ((r * c) % 3)) % 2) == 0;
 		default -> false;
 		};
-	}
-
-	public void setText(String text) {
-		int maxLength=0;
-		switch (this.encoding) {
-		case 1: 
-			maxLength=41;
-			break;
-		case 2: 
-			maxLength=25;
-			break;
-		case 4:
-			maxLength=17;
-			break;
-
-		case 8: 
-			maxLength=10;
-			break;
-		}
-		if (text == null) {
-			this.text = "";
-			this.textLength = 0;
-		} else {
-			// Truncate the string if it's longer than 17 characters
-			if (text.length() > maxLength) {
-				this.text = text.substring(0, maxLength);
-			} else {
-				this.text = text;
-			}
-			this.textLength = this.text.length();
-		}
-		setErrorCorrectionLevel();
-	}
-
-	public void setErrorCorrectionLevel() {
-		int mapped;
-
-		if (textLength >= 0 && textLength <= 7) {
-			mapped = 7;
-		} else if (textLength >= 8 && textLength <= 11) {
-			mapped = 11;
-		} else if (textLength >= 12 && textLength <= 14) {
-			mapped = 14;
-		} else if (textLength >= 15 && textLength <= 17) {
-			mapped = 17;
-		} else {
-			mapped = 17; // out of range
-		}
-		switch (mapped) {
-		case 7:
-			// H
-			errorCorrectionLevel = 2;
-			break;
-		case 11:
-			// Q
-			errorCorrectionLevel = 3;
-			break;
-		case 14:
-			// M
-			errorCorrectionLevel = 0;
-			break;
-		case 17:
-			// L
-			errorCorrectionLevel = 1;
-			break;
-		default:
-			// default to L
-			errorCorrectionLevel = 1;
-			break;
-		}
 	}
 
 	public void setAnimationEnabled(boolean isAnimationEnabled) {
