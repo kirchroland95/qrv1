@@ -148,43 +148,96 @@ public class QrV1 {
 	}
 
 	public void setErrorCorrectionLevel() {
-		int mapped;
-
-		if (textLength >= 0 && textLength <= 7) {
-			mapped = 7;
-		} else if (textLength >= 8 && textLength <= 11) {
-			mapped = 11;
-		} else if (textLength >= 12 && textLength <= 14) {
-			mapped = 14;
-		} else if (textLength >= 15 && textLength <= 17) {
-			mapped = 17;
-		} else {
-			mapped = 17; // out of range
+		switch (this.encoding) {
+			case 1:
+				setNumericErrorCorrection();
+				break;
+			case 2:
+				// Alphanumeric
+				setAlphanumericErrorCorrection();
+				break;
+			case 4:
+				// Byte
+				setByteErrorCorrection();
+				break;
+			case 8:
+				// Kanji
+				setKanjiErrorCorrection();
+				break;
+			default:
+				// default to Byte
+				setByteErrorCorrection();
+				break;
 		}
-		switch (mapped) {
-		case 7:
+
+	}
+	
+	private void setNumericErrorCorrection(){
+		// Numeric
+		if (textLength >= 0 && textLength <= 17) {
 			// H
 			errorCorrectionLevel = 2;
-			break;
-		case 11:
+		} else if (textLength >= 18 && textLength <= 27) {
 			// Q
 			errorCorrectionLevel = 3;
-			break;
-		case 14:
+		} else if (textLength >= 28 && textLength <= 34) {
 			// M
 			errorCorrectionLevel = 0;
-			break;
-		case 17:
+		} else if (textLength >= 35) {
 			// L
 			errorCorrectionLevel = 1;
-			break;
-		default:
-			// default to L
+		}
+	}
+	
+	private void setAlphanumericErrorCorrection(){
+		// Alphanumeric
+		if (textLength >= 0 && textLength <= 10) {
+			// H
+			errorCorrectionLevel = 2;
+		} else if (textLength >= 11 && textLength <= 16) {
+			// Q
+			errorCorrectionLevel = 3;
+		} else if (textLength >= 17 && textLength <= 20) {
+			// M
+			errorCorrectionLevel = 0;
+		} else if (textLength >= 21) {
+			// L
 			errorCorrectionLevel = 1;
-			break;
 		}
 	}
 
+	private void setByteErrorCorrection() {
+		if (textLength >= 0 && textLength <= 7) {
+			// H
+			errorCorrectionLevel = 2;
+		} else if (textLength >= 8 && textLength <= 11) {
+			// Q
+			errorCorrectionLevel = 3;
+		} else if (textLength >= 12 && textLength <= 14) {
+			// M
+			errorCorrectionLevel = 0;
+		} else if (textLength >= 15) {
+			// L
+			errorCorrectionLevel = 1;
+		} 
+	}
+	
+	private void setKanjiErrorCorrection() {
+		if (textLength >= 0 && textLength <= 4) {
+			// H
+			errorCorrectionLevel = 2;
+		} else if (textLength >= 5 && textLength <= 7) {
+			// Q
+			errorCorrectionLevel = 3;
+		} else if (textLength == 8 ) {
+			// M
+			errorCorrectionLevel = 0;
+		} else if (textLength >= 9) {
+			// L
+			errorCorrectionLevel = 1;
+		} 
+	}
+	
 	private void bestEncoding() {
 		// 1. Numeric
 		if (text.matches("[0-9]+")) {
@@ -249,7 +302,7 @@ public class QrV1 {
 			break;
 
 		case 8: // Kanji Mode (Indicator: 1000)
-
+			fillDataByte(); // TODO: placeholder, not yet supported
 			break;
 
 		default:
