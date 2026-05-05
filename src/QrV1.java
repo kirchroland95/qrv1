@@ -149,30 +149,30 @@ public class QrV1 {
 
 	public void setErrorCorrectionLevel() {
 		switch (this.encoding) {
-			case 1:
-				setNumericErrorCorrection();
-				break;
-			case 2:
-				// Alphanumeric
-				setAlphanumericErrorCorrection();
-				break;
-			case 4:
-				// Byte
-				setByteErrorCorrection();
-				break;
-			case 8:
-				// Kanji
-				setKanjiErrorCorrection();
-				break;
-			default:
-				// default to Byte
-				setByteErrorCorrection();
-				break;
+		case 1:
+			setNumericErrorCorrection();
+			break;
+		case 2:
+			// Alphanumeric
+			setAlphanumericErrorCorrection();
+			break;
+		case 4:
+			// Byte
+			setByteErrorCorrection();
+			break;
+		case 8:
+			// Kanji
+			setKanjiErrorCorrection();
+			break;
+		default:
+			// default to Byte
+			setByteErrorCorrection();
+			break;
 		}
 
 	}
-	
-	private void setNumericErrorCorrection(){
+
+	private void setNumericErrorCorrection() {
 		// Numeric
 		if (textLength >= 0 && textLength <= 17) {
 			// H
@@ -188,8 +188,8 @@ public class QrV1 {
 			errorCorrectionLevel = 1;
 		}
 	}
-	
-	private void setAlphanumericErrorCorrection(){
+
+	private void setAlphanumericErrorCorrection() {
 		// Alphanumeric
 		if (textLength >= 0 && textLength <= 10) {
 			// H
@@ -219,9 +219,9 @@ public class QrV1 {
 		} else if (textLength >= 15) {
 			// L
 			errorCorrectionLevel = 1;
-		} 
+		}
 	}
-	
+
 	private void setKanjiErrorCorrection() {
 		if (textLength >= 0 && textLength <= 4) {
 			// H
@@ -229,15 +229,15 @@ public class QrV1 {
 		} else if (textLength >= 5 && textLength <= 7) {
 			// Q
 			errorCorrectionLevel = 3;
-		} else if (textLength == 8 ) {
+		} else if (textLength == 8) {
 			// M
 			errorCorrectionLevel = 0;
 		} else if (textLength >= 9) {
 			// L
 			errorCorrectionLevel = 1;
-		} 
+		}
 	}
-	
+
 	private void bestEncoding() {
 		// 1. Numeric
 		if (text.matches("[0-9]+")) {
@@ -302,7 +302,7 @@ public class QrV1 {
 			break;
 
 		case 8: // Kanji Mode (Indicator: 1000)
-			fillDataByte(); // TODO: placeholder, not yet supported
+			fillDataKanji();
 			break;
 
 		default:
@@ -361,17 +361,17 @@ public class QrV1 {
 		int counter = 0;
 		int row = size - 2;
 		int col = size - 2;
-		boolean dirup = true;
+		boolean dirUp = true;
 
 		while (counter < data.length()) {
 			if (allocatedPositions[row][col] == 1 || allocatedPositions[row][col] == 4
 					|| allocatedPositions[row][col - 1] == 4) {
-				dirup = !dirup;
-				row += dirup ? -1 : 1;
+				dirUp = !dirUp;
+				row += dirUp ? -1 : 1;
 				col -= 2;
 			}
 			if (allocatedPositions[row][col] == 2) {
-				row += dirup ? -1 : 1;
+				row += dirUp ? -1 : 1;
 			}
 			if (allocatedPositions[row][col] == 3) {
 				col -= 1;
@@ -386,7 +386,7 @@ public class QrV1 {
 			qr[row][col - 1] = (data.charAt(counter + 1) == '1') ? 1 : 0;
 			if (qr[row][col - 1] == 1)
 				clearScreenWithDelay(delay);
-			row += dirup ? -1 : 1;
+			row += dirUp ? -1 : 1;
 			counter += 2;
 		}
 	}
@@ -461,17 +461,17 @@ public class QrV1 {
 		int counter = 0;
 		int row = size - 2;
 		int col = size - 2;
-		boolean dirup = true;
+		boolean dirUp = true;
 
 		while (counter < data.length()) {
 			if (allocatedPositions[row][col] == 1 || allocatedPositions[row][col] == 4
 					|| allocatedPositions[row][col - 1] == 4) {
-				dirup = !dirup;
-				row += dirup ? -1 : 1;
+				dirUp = !dirUp;
+				row += dirUp ? -1 : 1;
 				col -= 2;
 			}
 			if (allocatedPositions[row][col] == 2) {
-				row += dirup ? -1 : 1;
+				row += dirUp ? -1 : 1;
 			}
 			if (allocatedPositions[row][col] == 3) {
 				col -= 1;
@@ -486,7 +486,7 @@ public class QrV1 {
 			qr[row][col - 1] = (data.charAt(counter + 1) == '1') ? 1 : 0;
 			if (qr[row][col - 1] == 1)
 				clearScreenWithDelay(delay);
-			row += dirup ? -1 : 1;
+			row += dirUp ? -1 : 1;
 			counter += 2;
 		}
 
@@ -553,17 +553,17 @@ public class QrV1 {
 		int counter = 0;
 		int row = size - 2;
 		int col = size - 2;
-		boolean dirup = true;
+		boolean dirUp = true;
 
 		while (counter < data.length()) {
 			if (allocatedPositions[row][col] == 1 || allocatedPositions[row][col] == 4
 					|| allocatedPositions[row][col - 1] == 4) {
-				dirup = !dirup;
-				row += dirup ? -1 : 1;
+				dirUp = !dirUp;
+				row += dirUp ? -1 : 1;
 				col -= 2;
 			}
 			if (allocatedPositions[row][col] == 2) {
-				row += dirup ? -1 : 1;
+				row += dirUp ? -1 : 1;
 			}
 			if (allocatedPositions[row][col] == 3) {
 				col -= 1;
@@ -578,7 +578,7 @@ public class QrV1 {
 			qr[row][col - 1] = (data.charAt(counter + 1) == '1') ? 1 : 0;
 			if (qr[row][col - 1] == 1)
 				clearScreenWithDelay(delay);
-			row += dirup ? -1 : 1;
+			row += dirUp ? -1 : 1;
 			counter += 2;
 		}
 
@@ -599,6 +599,117 @@ public class QrV1 {
 			sb.append(String.format("%08d", Integer.parseInt(binaryString)));
 		}
 		return sb.toString();
+	}
+
+	private void fillDataKanji() {
+		// Create combined String of data from mode(4) + count(8) + data + terminator(variable) +
+		// + padding(until capacity) + EC
+		// in bits format using only 1 and 0
+		String data = "";
+		
+		// 1. Add mode bits (Kanji)
+		data += String.format("%4s", Integer.toBinaryString(encoding)).replace(' ', '0');
+
+		// 2. Calculate Length as 1 kanji character is 2 bytes
+		byte[] bytes;
+		try {
+			bytes = text.getBytes("Shift_JIS");
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+
+		if (bytes.length % 2 != 0) {
+			throw new IllegalArgumentException("Invalid Shift_JIS length for Kanji mode");
+		}
+
+		int kanjiCharCount = bytes.length / 2;
+
+		// 3. Add the text length
+		data+=(String.format("%8s", Integer.toBinaryString(kanjiCharCount)).replace(' ', '0'));
+
+		// 4. Encode Kanji
+		for (int i = 0; i < bytes.length; i += 2) {
+			// Get the two bytes
+			int b1 = bytes[i] & 0xFF;
+			int b2 = bytes[i + 1] & 0xFF;
+			
+			// Combine the two bytes
+			int sjis = (b1 << 8) | b2;
+
+			// Validate Shift JIS ranges
+			if (!((sjis >= 0x8140 && sjis <= 0x9FFC) || (sjis >= 0xE040 && sjis <= 0xEBBF))) {
+				throw new IllegalArgumentException("Invalid Kanji character for QR");
+			}
+
+			int subtractor = (sjis <= 0x9FFC) ? 0x8140 : 0xC140;
+			int value = sjis - subtractor;
+
+			int finalValue = ((value >> 8) * 0xC0) + (value & 0xFF);
+
+			data+=(String.format("%13s", Integer.toBinaryString(finalValue)).replace(' ', '0'));
+		}
+
+		int targetBits = DATA_CAPACITY_BYTES[errorCorrectionLevel] * 8;
+
+		// 5. Terminator (max 4 bits, no overflow)
+		int remaining = targetBits - data.length();
+		int terminatorLength = Math.min(4, Math.max(0, remaining));
+		data+=("0".repeat(terminatorLength));
+
+		// 6. Pad to byte boundary
+		while (data.length() % 8 != 0) {
+			data+=('0');
+		}
+
+		// 7. Add padding to fill the data to it's capacity (236 / 17)
+		String pad1 = "11101100";
+		String pad2 = "00010001";
+		boolean usePad1 = true;
+
+		while (data.length() + 8 <= targetBits) {
+			data+=(usePad1 ? pad1 : pad2);
+			usePad1 = !usePad1;
+		}
+
+		// 8.  Calculate EC
+		byte[] dataCodewords = binaryStringToBytes(data.toString());
+		byte[] ecBlocks = ReedSolomonEncoder.calculateEcBlocks(dataCodewords, EC_CAPACITY_BYTES[errorCorrectionLevel]);
+
+		// 9. Add the EC
+		data+=ReedSolomonEncoder.bytesToBinaryString(ecBlocks);
+
+		// Add data to QR array
+		int counter = 0;
+		int row = size - 2;
+		int col = size - 2;
+		boolean dirUp = true;
+
+		while (counter < data.length()) {
+			if (allocatedPositions[row][col] == 1 || allocatedPositions[row][col] == 4
+					|| allocatedPositions[row][col - 1] == 4) {
+				dirUp = !dirUp;
+				row += dirUp ? -1 : 1;
+				col -= 2;
+			}
+			if (allocatedPositions[row][col] == 2) {
+				row += dirUp ? -1 : 1;
+			}
+			if (allocatedPositions[row][col] == 3) {
+				col -= 1;
+			}
+			if (allocatedPositions[row][col] == 5) {
+				row = 13;
+				col = 9;
+			}
+			qr[row][col] = (data.charAt(counter) == '1') ? 1 : 0;
+			if (qr[row][col] == 1)
+				clearScreenWithDelay(delay);
+			qr[row][col - 1] = (data.charAt(counter + 1) == '1') ? 1 : 0;
+			if (qr[row][col - 1] == 1)
+				clearScreenWithDelay(delay);
+			row += dirUp ? -1 : 1;
+			counter += 2;
+		}
 	}
 
 	private int selectBestMask() {
