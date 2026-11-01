@@ -1,5 +1,13 @@
 import java.nio.charset.StandardCharsets;
 
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+
+import javax.imageio.ImageIO;
+
 public class QrV1 {
 	private String text = "Ver1";
 	private int textLength;
@@ -77,6 +85,14 @@ public class QrV1 {
 
 		// Show QR in terminal
 		printQR();
+
+		// Save as PNG
+		try {
+			saveQrAsImage("myqr.png");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	public void buildQr(String text) {
@@ -602,11 +618,12 @@ public class QrV1 {
 	}
 
 	private void fillDataKanji() {
-		// Create combined String of data from mode(4) + count(8) + data + terminator(variable) +
+		// Create combined String of data from mode(4) + count(8) + data +
+		// terminator(variable) +
 		// + padding(until capacity) + EC
 		// in bits format using only 1 and 0
 		String data = "";
-		
+
 		// 1. Add mode bits (Kanji)
 		data += String.format("%4s", Integer.toBinaryString(encoding)).replace(' ', '0');
 
@@ -625,14 +642,14 @@ public class QrV1 {
 		int kanjiCharCount = bytes.length / 2;
 
 		// 3. Add the text length
-		data+=(String.format("%8s", Integer.toBinaryString(kanjiCharCount)).replace(' ', '0'));
+		data += (String.format("%8s", Integer.toBinaryString(kanjiCharCount)).replace(' ', '0'));
 
 		// 4. Encode Kanji
 		for (int i = 0; i < bytes.length; i += 2) {
 			// Get the two bytes
 			int b1 = bytes[i] & 0xFF;
 			int b2 = bytes[i + 1] & 0xFF;
-			
+
 			// Combine the two bytes
 			int sjis = (b1 << 8) | b2;
 
@@ -646,7 +663,7 @@ public class QrV1 {
 
 			int finalValue = ((value >> 8) * 0xC0) + (value & 0xFF);
 
-			data+=(String.format("%13s", Integer.toBinaryString(finalValue)).replace(' ', '0'));
+			data += (String.format("%13s", Integer.toBinaryString(finalValue)).replace(' ', '0'));
 		}
 
 		int targetBits = DATA_CAPACITY_BYTES[errorCorrectionLevel] * 8;
@@ -654,11 +671,11 @@ public class QrV1 {
 		// 5. Terminator (max 4 bits, no overflow)
 		int remaining = targetBits - data.length();
 		int terminatorLength = Math.min(4, Math.max(0, remaining));
-		data+=("0".repeat(terminatorLength));
+		data += ("0".repeat(terminatorLength));
 
 		// 6. Pad to byte boundary
 		while (data.length() % 8 != 0) {
-			data+=('0');
+			data += ('0');
 		}
 
 		// 7. Add padding to fill the data to it's capacity (236 / 17)
@@ -667,16 +684,16 @@ public class QrV1 {
 		boolean usePad1 = true;
 
 		while (data.length() + 8 <= targetBits) {
-			data+=(usePad1 ? pad1 : pad2);
+			data += (usePad1 ? pad1 : pad2);
 			usePad1 = !usePad1;
 		}
 
-		// 8.  Calculate EC
+		// 8. Calculate EC
 		byte[] dataCodewords = binaryStringToBytes(data.toString());
 		byte[] ecBlocks = ReedSolomonEncoder.calculateEcBlocks(dataCodewords, EC_CAPACITY_BYTES[errorCorrectionLevel]);
 
 		// 9. Add the EC
-		data+=ReedSolomonEncoder.bytesToBinaryString(ecBlocks);
+		data += ReedSolomonEncoder.bytesToBinaryString(ecBlocks);
 
 		// Add data to QR array
 		int counter = 0;
@@ -993,6 +1010,42 @@ public class QrV1 {
 			}
 		}
 
+	}
+
+	private void saveQrAsImage(String filename) throws IOException {
+
+		int moduleSize = 20; // pixels per QR module
+		int quietZone = 3; // white modules around the QR, 4 needed but 1 already surrounds the qr array
+
+		int imageSize = (size + quietZone * 2) * moduleSize;
+
+		BufferedImage image = new BufferedImage(imageSize, imageSize, BufferedImage.TYPE_INT_RGB);
+
+		Graphics2D g = image.createGraphics();
+
+		// White background
+		g.setColor(Color.WHITE);
+		g.fillRect(0, 0, imageSize, imageSize);
+
+		// Black QR modules
+		g.setColor(Color.BLACK);
+
+		for (int row = 0; row < size; row++) {
+			for (int col = 0; col < size; col++) {
+
+				if (qr[row][col] == 1) {
+
+					int x = (col + quietZone) * moduleSize;
+					int y = (row + quietZone) * moduleSize;
+
+					g.fillRect(x, y, moduleSize, moduleSize);
+				}
+			}
+		}
+
+		g.dispose();
+
+		ImageIO.write(image, "png", new File(filename));
 	}
 
 }

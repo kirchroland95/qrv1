@@ -1,4 +1,4 @@
-public class ReedSolomonEncoder {
+ public class ReedSolomonEncoder {
 
     // Creates the generator polynomial (Index 0 = x^0 ... Index N = x^N)
     private static int[] generatePolynomial(int ecWords) {
